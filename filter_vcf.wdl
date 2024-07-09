@@ -4,7 +4,7 @@ workflow FilterVCF {
   input {
     File vcf_file  # Input VCF file
     File bed_file  # BED file with SNP positions
-    String docker_image = "us.gcr.io/broad-dsp-lrma/mosdepth:sz_v3152024"  # Existing Docker image
+    String docker_image = "us.gcr.io/broad-dsp-lrma/mosdepth:sz_v3152024"  
   }
 
   call FilterVCFTask {
