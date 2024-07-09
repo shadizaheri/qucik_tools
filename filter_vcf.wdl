@@ -2,7 +2,8 @@ version 1.0
 
 workflow FilterVCF {
   input {
-    File vcf_file  # Input VCF file
+    File vcf_file  # Input VCF file (vcf.gz)
+    File vcf_index  # Input VCF index file (vcf.gz.csi or vcf.gz.tbi)
     File bed_file  # BED file with SNP positions
     String docker_image = "us.gcr.io/broad-dsp-lrma/mosdepth:sz_v3152024"  # Existing Docker image
     Int filter_vcf_cpu = 2  # Number of CPUs for FilterVCFTask
@@ -11,16 +12,19 @@ workflow FilterVCF {
     String index_vcf_memory = "2 GB"  # Memory for IndexVCFTask
     String filter_vcf_disk = "10 GB"  # Disk space for FilterVCFTask
     String index_vcf_disk = "10 GB"  # Disk space for IndexVCFTask
+    String output_vcf_name = "filtered.vcf.gz"  # Output VCF file name
   }
 
   call FilterVCFTask {
     input:
       vcf_file = vcf_file,
+      vcf_index = vcf_index,
       bed_file = bed_file,
       docker_image = docker_image,
       cpu = filter_vcf_cpu,
       memory = filter_vcf_memory,
-      disk = filter_vcf_disk
+      disk = filter_vcf_disk,
+      output_vcf_name = output_vcf_name
   }
 
   call IndexVCFTask {
@@ -41,19 +45,25 @@ workflow FilterVCF {
 task FilterVCFTask {
   input {
     File vcf_file
+    File vcf_index
     File bed_file
     String docker_image
     Int cpu
     String memory
     String disk
+    String output_vcf_name
   }
 
   command {
-    bcftools view -R ~{bed_file} -Oz -o filtered.vcf.gz ~{vcf_file}
+    # Ensure the VCF file is indexed
+    if [[ ! -e ~{vcf_file}.tbi ]]; then
+      ln -s ~{vcf_index} ~{vcf_file}.tbi
+    fi
+    bcftools view -R ~{bed_file} -Oz -o ~{output_vcf_name} ~{vcf_file}
   }
 
   output {
-    File filtered_vcf = "filtered.vcf.gz"
+    File filtered_vcf = "~{output_vcf_name}"
   }
 
   runtime {
