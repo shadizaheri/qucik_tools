@@ -3,6 +3,7 @@ version 1.0
 workflow FilterVCF {
   input {
     File vcf_file  # Input VCF file (vcf.gz)
+    File vcf_index  # Input VCF index file (vcf.gz.tbi or vcf.csi)
     File bed_file  # BED file with SNP positions
     String docker_image = "us.gcr.io/broad-dsp-lrma/mosdepth:sz_v3272024"  # Existing Docker image
     Int filter_vcf_cpu = 2  # Number of CPUs for FilterVCFTask
@@ -17,6 +18,7 @@ workflow FilterVCF {
   call FilterVCFTask {
     input:
       vcf_file = vcf_file,
+      vcf_index = vcf_index,
       bed_file = bed_file,
       docker_image = docker_image,
       cpu = filter_vcf_cpu,
@@ -43,6 +45,7 @@ workflow FilterVCF {
 task FilterVCFTask {
   input {
     File vcf_file
+    File vcf_index
     File bed_file
     String docker_image
     Int cpu
@@ -52,6 +55,8 @@ task FilterVCFTask {
   }
 
   command {
+    # Ensure the VCF file is indexed by creating a symbolic link to the index file
+    ln -s ~{vcf_index} ~{vcf_file}.tbi || ln -s ~{vcf_index} ~{vcf_file}.csi
     bcftools view -R ~{bed_file} -Oz -o ~{output_vcf_name} ~{vcf_file}
   }
 
@@ -77,11 +82,11 @@ task IndexVCFTask {
   }
 
   command {
-    bcftools index -c ~{vcf_file}
+    bcftools index ~{vcf_file}
   }
 
   output {
-    File vcf_index = "~{vcf_file}.csi"
+    File vcf_index = "~{vcf_file}.csi"  # Use .csi as a placeholder, bcftools will create the correct index file
   }
 
   runtime {
